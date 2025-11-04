@@ -57,5 +57,16 @@ public class ConfigTest {
     };
     assertThat(cfg.getDbName()).isNull();
   }
+
+  @Test
+  void dbName_extracted_from_mysql_url_without_port() {
+    Config cfg = new Config() {
+      @Override
+      public String getJdbcUrl() {
+        return "jdbc:mysql://localhost/testdb";
+      }
+    };
+    assertThat(cfg.getDbName()).isEqualTo("testdb");
+  }
 }
 

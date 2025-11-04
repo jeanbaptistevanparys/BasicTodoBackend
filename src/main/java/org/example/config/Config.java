@@ -39,17 +39,20 @@ public class Config {
   private String extractDbNameFromUrl(String url) {
     if (url == null) return null;
     // Extract database name from JDBC URL
-    // For MySQL: jdbc:mysql://host:port/dbname?params
-    // For PostgreSQL: jdbc:postgresql://host:port/dbname?params
+    // For MySQL: jdbc:mysql://host:port/dbname?params or jdbc:mysql://host/dbname
+    // For PostgreSQL: jdbc:postgresql://host:port/dbname?params or jdbc:postgresql://host/dbname
     // For H2 file: jdbc:h2:file:./target/demo-db -> "demo-db"
     
     if (url.startsWith("jdbc:mysql://") || url.startsWith("jdbc:postgresql://")) {
-      int slashAfterPort = url.indexOf('/', url.indexOf("://") + 3);
-      if (slashAfterPort == -1) return null;
-      int questionMark = url.indexOf('?', slashAfterPort);
+      // Find the position after the protocol
+      int afterProtocol = url.indexOf("://") + 3;
+      // Find the first slash after the host (and optional port)
+      int slashAfterHost = url.indexOf('/', afterProtocol);
+      if (slashAfterHost == -1) return null;
+      int questionMark = url.indexOf('?', slashAfterHost);
       String dbPart = questionMark == -1 
-          ? url.substring(slashAfterPort + 1)
-          : url.substring(slashAfterPort + 1, questionMark);
+          ? url.substring(slashAfterHost + 1)
+          : url.substring(slashAfterHost + 1, questionMark);
       return dbPart.isEmpty() ? null : dbPart;
     }
     
