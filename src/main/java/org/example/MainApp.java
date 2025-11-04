@@ -12,6 +12,7 @@ import org.example.repository.UserRepository;
 import org.example.service.TodoService;
 import org.example.service.UserService;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.configuration.FluentConfiguration;
 import org.flywaydb.core.api.exception.FlywayValidateException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,15 +29,30 @@ public class MainApp {
     hcfg.setPassword(config.getDbPass());
     hcfg.setMaximumPoolSize(config.getDbPoolSize());
     String driver = config.getDbDriver();
-    if (driver != null) hcfg.setDriverClassName(driver);
+    if (driver != null) {
+      try {
+        // ensure the driver class is loadable before passing it to Hikari
+        Class.forName(driver);
+        hcfg.setDriverClassName(driver);
+      } catch (ClassNotFoundException e) {
+        log.warn("JDBC driver class {} not found on classpath, skipping setDriverClassName", driver);
+      }
+    }
 
     HikariDataSource ds = new HikariDataSource(hcfg);
 
-    Flyway flyway = Flyway.configure()
+    FluentConfiguration fconf = Flyway.configure()
         .dataSource(ds)
         .locations(config.getFlywayLocations())
-        .validateOnMigrate(config.isFlywayValidateOnMigrate())
-        .load();
+        .validateOnMigrate(config.isFlywayValidateOnMigrate());
+
+    String defaultSchema = config.getFlywayDefaultSchema();
+    if (defaultSchema != null && !defaultSchema.isBlank()) {
+      log.info("Setting Flyway default schema to: {}", defaultSchema);
+      fconf.defaultSchema(defaultSchema);
+    }
+
+    Flyway flyway = fconf.load();
 
     if (config.isFlywayCleanOnStart()) {
       log.warn("Flyway cleanOnStart=true: dropping and recreating schema");

@@ -2,6 +2,10 @@
 
 Simple Todo backend written in Java using Vert.x and Maven. Includes user authentication (JWT), password hashing, and a simple todo API.
 
+## What's new
+
+- Passwords are hashed using bcrypt via `org.example.utils.PasswordUtil` (backed by jBCrypt). Use `PasswordUtil.hash(password)` to create a hash and `PasswordUtil.verify(password, hash)` to verify.
+
 ## Requirements
 
 - JDK 17+
@@ -18,6 +22,8 @@ mvn clean package
 
 This produces an executable jar in `target/`.
 
+If you don't have Maven available on your system, run the project from your IDE (IntelliJ/Idea) which will download dependencies automatically.
+
 ## Run
 
 Run the packaged jar:
@@ -28,6 +34,9 @@ java -jar target/BasicTodoBackend-1.0-SNAPSHOT.jar
 
 Or run from your IDE (run `org.example.MainApp`).
 
+Notes about JDBC drivers:
+- The project uses H2 by default for demos. If you want to connect to MySQL or PostgreSQL, ensure the correct JDBC driver is available on the classpath (the Maven `pom.xml` includes the MySQL connector dependency). If you manage drivers externally, the app will skip explicitly setting the driver class when it's not found on the classpath and rely on the runtime to provide it.
+
 ## Tests
 
 Run unit tests:
@@ -36,11 +45,13 @@ Run unit tests:
 mvn test
 ```
 
-You can run just the new util tests like this:
+Example: run only password util tests:
 
 ```bash
-mvn -Dtest=PasswordUtilTest,JwtUtilTest test
+mvn -Dtest=PasswordUtilTest test
 ```
+
+The `PasswordUtilTest` covers hashing, verification, and null/invalid inputs.
 
 ## Configuration
 
@@ -60,6 +71,53 @@ A demo H2 file `target/demo-db.mv.db` may be present when running locally. Migra
 - `src/main/resources/db/migration_single`
 
 Use the provided SQL migration files to initialize the database for tests/local runs.
+
+## Database requirements for Flyway
+
+Flyway needs a database connection that has permission to create and modify the schema history table and to create/alter the schema objects defined in your migrations. For MySQL the minimal requirements are:
+
+- A database (schema) to run migrations against (e.g. `todoapp`).
+- A user with privileges on that database: `CREATE`, `ALTER`, `DROP`, `INDEX`, `ALTER ROUTINE`, `CREATE ROUTINE`, `LOCK TABLES`, `CREATE TEMPORARY TABLES`, `INSERT`, `UPDATE`, `DELETE`, `SELECT`.
+- Permission to create the Flyway schema history table (Flyway creates and maintains `flyway_schema_history` by default) in the target database.
+
+If you cannot grant all privileges, at minimum ensure the account can:
+
+- CREATE, ALTER, DROP on tables
+- SELECT, INSERT on the schema history table (Flyway will create it if missing)
+
+Flyway will store a small table (by default `flyway_schema_history`) in the target database. You don't need to pre-create this table; Flyway will create it on first run, but your DB user needs permission to create tables in the target schema.
+
+### Typical permissions SQL (MySQL)
+
+```sql
+-- Run as a privileged user (root) to create the db and user used by the app
+CREATE DATABASE todoapp;
+CREATE USER 'exampleuser'@'%' IDENTIFIED BY 'examplepass';
+GRANT CREATE, ALTER, DROP, INDEX, CREATE ROUTINE, ALTER ROUTINE, LOCK TABLES, CREATE TEMPORARY TABLES, INSERT, UPDATE, DELETE, SELECT
+  ON todoapp.* TO 'exampleuser'@'%';
+FLUSH PRIVILEGES;
+```
+
+## Docker and docker-compose
+
+A `Dockerfile` and `docker-compose.yml` are provided to run MySQL 8 and the app together for development. The compose file creates a `todoapp` database and an `exampleuser` user.
+
+Start the stack:
+
+```bash
+# build app image and start db + app
+docker compose up --build
+```
+
+Stop the stack:
+
+```bash
+docker compose down -v
+```
+
+Notes:
+- The app `Config` supports overriding via environment variables (it uppercases property names). You can also set `JDBC_URL`, `DB_USER`, `DB_PASS` environment variables in `docker-compose.yml` if needed.
+- Flyway will run on application startup and attempt to apply migrations found under `classpath:db/migration`.
 
 ## API & OpenAPI
 

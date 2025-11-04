@@ -59,6 +59,12 @@
       <artifactId>flyway-core</artifactId>
       <version>${flyway.version}</version>
     </dependency>
+    <!-- Flyway MySQL extension: adds MySQL 8.x support for Flyway core -->
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-mysql</artifactId>
+      <version>${flyway.version}</version>
+    </dependency>
 
     <!-- Logging: SLF4J + Logback -->
     <dependency>
@@ -115,6 +121,13 @@
       <artifactId>assertj-core</artifactId>
       <version>3.26.3</version>
       <scope>test</scope>
+    </dependency>
+
+    <!-- Add MySQL JDBC driver so the application can load com.mysql.cj.jdbc.Driver when using MySQL -->
+    <dependency>
+      <groupId>com.mysql</groupId>
+      <artifactId>mysql-connector-j</artifactId>
+      <version>8.0.33</version>
     </dependency>
   </dependencies>
 
