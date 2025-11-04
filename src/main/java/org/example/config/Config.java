@@ -27,11 +27,44 @@ public class Config {
   public String getDbPass() { return prop("db.pass", ""); }
   public String getDbDriver() { return prop("db.driver", driverForUrl(getJdbcUrl())); }
   public int getDbPoolSize() { return Integer.parseInt(prop("db.pool.size", "10")); }
+  public String getDbName() { return prop("db.name", extractDbNameFromUrl(getJdbcUrl())); }
 
   private String driverForUrl(String url) {
     if (url.startsWith("jdbc:h2:")) return "org.h2.Driver";
     if (url.startsWith("jdbc:postgresql:")) return "org.postgresql.Driver";
     if (url.startsWith("jdbc:mysql:")) return "com.mysql.cj.jdbc.Driver";
+    return null;
+  }
+
+  private String extractDbNameFromUrl(String url) {
+    if (url == null) return null;
+    // Extract database name from JDBC URL
+    // For MySQL: jdbc:mysql://host:port/dbname?params
+    // For PostgreSQL: jdbc:postgresql://host:port/dbname?params
+    // For H2 file: jdbc:h2:file:./target/demo-db -> "demo-db"
+    
+    if (url.startsWith("jdbc:mysql://") || url.startsWith("jdbc:postgresql://")) {
+      int slashAfterPort = url.indexOf('/', url.indexOf("://") + 3);
+      if (slashAfterPort == -1) return null;
+      int questionMark = url.indexOf('?', slashAfterPort);
+      String dbPart = questionMark == -1 
+          ? url.substring(slashAfterPort + 1)
+          : url.substring(slashAfterPort + 1, questionMark);
+      return dbPart.isEmpty() ? null : dbPart;
+    }
+    
+    if (url.startsWith("jdbc:h2:")) {
+      // Extract from H2 URLs like jdbc:h2:file:./target/demo-db
+      int lastSlash = url.lastIndexOf('/');
+      int lastColon = url.lastIndexOf(':');
+      int semicolon = url.indexOf(';');
+      int start = Math.max(lastSlash, lastColon) + 1;
+      int end = semicolon == -1 ? url.length() : semicolon;
+      if (start < end) {
+        return url.substring(start, end);
+      }
+    }
+    
     return null;
   }
 

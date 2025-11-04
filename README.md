@@ -54,12 +54,37 @@ Edit `src/main/resources/application.properties` or set environment variables as
 
 ## Database
 
-A demo H2 file `target/demo-db.mv.db` may be present when running locally. Migrations are in:
+By default, the application uses an H2 file database at `target/demo-db.mv.db` for local development. Migrations are in:
 
 - `src/main/resources/db/migration`
 - `src/main/resources/db/migration_single`
 
-Use the provided SQL migration files to initialize the database for tests/local runs.
+### Using MySQL
+
+The application supports MySQL 8.x. To use MySQL:
+
+1. **Create the database and user:**
+   ```sql
+   CREATE DATABASE my_app_db;
+   CREATE USER 'appuser'@'%' IDENTIFIED BY 'apppassword';
+   GRANT ALL PRIVILEGES ON my_app_db.* TO 'appuser'@'%';
+   FLUSH PRIVILEGES;
+   ```
+
+2. **Configure the application** by setting environment variables or editing `src/main/resources/application.properties`:
+   ```properties
+   jdbc.url=jdbc:mysql://localhost:3306/my_app_db?useSSL=false&serverTimezone=UTC
+   db.user=appuser
+   db.pass=apppassword
+   db.driver=com.mysql.cj.jdbc.Driver
+   ```
+
+   Note: The JDBC URL must include the database name (e.g., `/my_app_db`) for Flyway to properly detect the default schema.
+
+3. **Run the application** - migrations will be applied automatically by Flyway on startup.
+
+The application includes defensive driver loading, so if a driver class is not on the classpath, it will log a warning and attempt to continue with JDBC URL-based driver detection.
+
 
 ## API & OpenAPI
 

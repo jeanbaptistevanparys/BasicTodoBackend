@@ -28,15 +28,30 @@ public class MainApp {
     hcfg.setPassword(config.getDbPass());
     hcfg.setMaximumPoolSize(config.getDbPoolSize());
     String driver = config.getDbDriver();
-    if (driver != null) hcfg.setDriverClassName(driver);
+    if (driver != null) {
+      try {
+        Class.forName(driver);
+        hcfg.setDriverClassName(driver);
+      } catch (ClassNotFoundException e) {
+        log.warn("JDBC driver class {} not found on classpath, skipping setDriverClassName", driver);
+      }
+    }
 
     HikariDataSource ds = new HikariDataSource(hcfg);
 
-    Flyway flyway = Flyway.configure()
+    // Configure Flyway with default schema if available from JDBC URL
+    String dbName = config.getDbName();
+    var flywayConfig = Flyway.configure()
         .dataSource(ds)
         .locations(config.getFlywayLocations())
-        .validateOnMigrate(config.isFlywayValidateOnMigrate())
-        .load();
+        .validateOnMigrate(config.isFlywayValidateOnMigrate());
+    
+    if (dbName != null && !dbName.isEmpty()) {
+      log.info("Setting Flyway default schema to: {}", dbName);
+      flywayConfig.defaultSchema(dbName);
+    }
+    
+    Flyway flyway = flywayConfig.load();
 
     if (config.isFlywayCleanOnStart()) {
       log.warn("Flyway cleanOnStart=true: dropping and recreating schema");
